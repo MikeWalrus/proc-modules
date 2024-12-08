@@ -26,7 +26,7 @@ pub struct Module {
     /// The size of the module.
     pub size: u64,
     /// What is using this module.
-    pub used_by: Vec<String>
+    pub used_by: Vec<String>,
 }
 
 impl Module {
@@ -34,35 +34,32 @@ impl Module {
     pub fn parse(line: &str) -> io::Result<Module> {
         let mut parts = line.split(' ');
 
-        let name = parts.next().ok_or_else(|| io::Error::new(
-            io::ErrorKind::InvalidData,
-            "module name not found"
-        ))?;
+        let name = parts
+            .next()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "module name not found"))?;
 
-        let size = parts.next().ok_or_else(|| io::Error::new(
-            io::ErrorKind::InvalidData,
-            "size not found"
-        ))?;
+        let size = parts
+            .next()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "size not found"))?;
 
-        let used_by = parts.nth(1).ok_or_else(|| io::Error::new(
-            io::ErrorKind::InvalidData,
-            "used_by not found"
-        ))?;
+        let used_by = parts
+            .nth(1)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "used_by not found"))?;
 
         Ok(Module {
             module: name.to_string(),
-            size: size.parse::<u64>().map_err(|_| io::Error::new(
-                io::ErrorKind::InvalidData,
-                "module size is not a number"
-            ))?,
+            size: size.parse::<u64>().map_err(|_| {
+                io::Error::new(io::ErrorKind::InvalidData, "module size is not a number")
+            })?,
             used_by: if used_by == "-" {
                 vec![]
             } else {
-                used_by.split(',')
+                used_by
+                    .split(',')
                     .map(String::from)
                     .filter(|x| !x.is_empty())
                     .collect()
-            }
+            },
         })
     }
 
@@ -100,7 +97,7 @@ impl Iterator for ModuleIter {
         match self.file.read_line(&mut self.buffer) {
             Ok(read) if read == 0 => None,
             Ok(_) => Some(Module::parse(&self.buffer)),
-            Err(why) => Some(Err(why))
+            Err(why) => Some(Err(why)),
         }
     }
 }
