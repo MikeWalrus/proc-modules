@@ -27,12 +27,14 @@ pub struct Module {
     pub size: u64,
     /// What is using this module.
     pub used_by: Vec<String>,
+    /// The base address of the module.
+    pub base: Option<u64>,
 }
 
 impl Module {
     /// Parse an individual /proc/modules-like line.
     pub fn parse(line: &str) -> io::Result<Module> {
-        let mut parts = line.split(' ');
+        let mut parts = line.split_ascii_whitespace();
 
         let name = parts
             .next()
@@ -45,6 +47,8 @@ impl Module {
         let used_by = parts
             .nth(1)
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "used_by not found"))?;
+
+        let base = parts.nth(1);
 
         Ok(Module {
             module: name.to_string(),
@@ -60,6 +64,9 @@ impl Module {
                     .filter(|x| !x.is_empty())
                     .collect()
             },
+            base: base
+                .and_then(|b| u64::from_str_radix(b.strip_prefix("0x")?, 16).ok())
+                .and_then(|b| if b == 0 { None } else { Some(b) }),
         })
     }
 
@@ -106,9 +113,9 @@ impl Iterator for ModuleIter {
 mod tests {
     use super::*;
 
-    const SAMPLE: &str = r#"snd_hda_intel 40960 9 - Live 0x0000000000000000
-snd_hda_codec 126976 4 snd_hda_codec_hdmi,snd_hda_codec_realtek,snd_hda_codec_generic,snd_hda_intel, Live 0x0000000000000000
-snd_hda_core 81920 5 snd_hda_codec_hdmi,snd_hda_codec_realtek,snd_hda_codec_generic,snd_hda_intel,snd_hda_codec, Live 0x0000000000000000
+    const SAMPLE: &str = r#"snd_hda_intel 40960 9 - Live 0xffffffffc144e000
+snd_hda_codec 126976 4 snd_hda_codec_hdmi,snd_hda_codec_realtek,snd_hda_codec_generic,snd_hda_intel, Live 0xffffffffc1960000
+snd_hda_core 81920 5 snd_hda_codec_hdmi,snd_hda_codec_realtek,snd_hda_codec_generic,snd_hda_intel,snd_hda_codec, Live 0xffffffffc1416000
 nvidia_drm 40960 11 - Live 0x0000000000000000 (POE)"#;
 
     #[test]
@@ -119,7 +126,8 @@ nvidia_drm 40960 11 - Live 0x0000000000000000 (POE)"#;
                 Module {
                     module: "snd_hda_intel".into(),
                     size: 40960,
-                    used_by: vec![]
+                    used_by: vec![],
+                    base: Some(0xffffffffc144e000)
                 },
                 Module {
                     module: "snd_hda_codec".into(),
@@ -129,7 +137,8 @@ nvidia_drm 40960 11 - Live 0x0000000000000000 (POE)"#;
                         "snd_hda_codec_realtek".into(),
                         "snd_hda_codec_generic".into(),
                         "snd_hda_intel".into(),
-                    ]
+                    ],
+                    base: Some(0xffffffffc1960000)
                 },
                 Module {
                     module: "snd_hda_core".into(),
@@ -140,12 +149,14 @@ nvidia_drm 40960 11 - Live 0x0000000000000000 (POE)"#;
                         "snd_hda_codec_generic".into(),
                         "snd_hda_intel".into(),
                         "snd_hda_codec".into(),
-                    ]
+                    ],
+                    base: Some(0xffffffffc1416000)
                 },
                 Module {
                     module: "nvidia_drm".into(),
                     size: 40960,
-                    used_by: vec![]
+                    used_by: vec![],
+                    base: None
                 },
             ]
         )
