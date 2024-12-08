@@ -11,6 +11,6 @@ readme = "README.md"
 license = "MIT"
 categories = ["os::unix-apis"]
 keywords = ["linux", "proc", "modules"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
